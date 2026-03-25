@@ -173,29 +173,32 @@ export class AsanaClientWrapper {
   }
 
   async createTask(projectId: string, data: any) {
+    // Destructure section out so it's not sent as an invalid top-level field
+    const { section, ...dataWithoutSection } = data;
+
     // Ensure projects array includes the projectId
-    const projects = data.projects || [];
+    const projects = dataWithoutSection.projects || [];
     if (!projects.includes(projectId)) {
       projects.push(projectId);
     }
 
     const taskData = {
       data: {
-        ...data,
+        ...dataWithoutSection,
         projects,
         // Handle resource_subtype if provided
-        resource_subtype: data.resource_subtype || 'default_task',
+        resource_subtype: dataWithoutSection.resource_subtype || 'default_task',
         // Handle custom_fields if provided
-        custom_fields: data.custom_fields || {}
+        custom_fields: dataWithoutSection.custom_fields || {}
       }
     };
 
     // If section is specified, use memberships for direct section assignment
-    if (data.section) {
+    if (section) {
       taskData.data.memberships = [
         {
           project: projectId,
-          section: data.section
+          section: section
         }
       ];
     }
@@ -258,6 +261,66 @@ export class AsanaClientWrapper {
     const options = opts.opt_fields ? opts : {};
     const sections = new Asana.SectionsApi();
     const response = await sections.getSectionsForProject(projectId, options);
+    return response.data;
+  }
+
+  async addItemToPortfolio(portfolioGid: string, itemGid: string): Promise<any> {
+    const client = Asana.ApiClient.instance;
+    const body = { data: { item: itemGid } };
+    const response = await client.callApi(
+      '/portfolios/{portfolio_gid}/addItem',
+      'POST',
+      { portfolio_gid: portfolioGid },
+      {},
+      {},
+      {},
+      body,
+      ['token'],
+      ['application/json'],
+      ['application/json'],
+      'Object'
+    );
+    return response.data;
+  }
+
+  async getPortfolioItems(portfolioGid: string, opts: any = {}): Promise<any> {
+    const client = Asana.ApiClient.instance;
+    const queryParams: any = {};
+    if (opts.opt_fields) {
+      queryParams.opt_fields = opts.opt_fields;
+    }
+    const response = await client.callApi(
+      '/portfolios/{portfolio_gid}/items',
+      'GET',
+      { portfolio_gid: portfolioGid },
+      queryParams,
+      {},
+      {},
+      null,
+      ['token'],
+      [],
+      ['application/json'],
+      'Object'
+    );
+    return response.data;
+  }
+
+  async duplicateProject(projectId: string, data: any): Promise<any> {
+    const client = Asana.ApiClient.instance;
+    const body = { data };
+    const response = await client.callApi(
+      '/projects/{project_gid}/duplicate',
+      'POST',
+      { project_gid: projectId },
+      {},
+      {},
+      {},
+      body,
+      ['token'],
+      ['application/json'],
+      ['application/json'],
+      'Object'
+    );
     return response.data;
   }
 
@@ -398,6 +461,52 @@ export class AsanaClientWrapper {
       }
     };
     const response = await this.tasks.addTagForTask(body, task_gid);
+    return response.data;
+  }
+
+  async addSubGoalForGoal(goalGid: string, data: any): Promise<any> {
+    const client = Asana.ApiClient.instance;
+    const body: any = { data: { supporting_resource: data.sub_goal } };
+    if (data.insert_before) body.data.insert_before = data.insert_before;
+    if (data.insert_after) body.data.insert_after = data.insert_after;
+    if (data.contribution_weight !== undefined) body.data.contribution_weight = data.contribution_weight;
+
+    const response = await client.callApi(
+      '/goals/{goal_gid}/addSupportingRelationship',
+      'POST',
+      { goal_gid: goalGid },
+      {},
+      {},
+      {},
+      body,
+      ['token'],
+      ['application/json'],
+      ['application/json'],
+      'Object'
+    );
+    return response.data;
+  }
+
+  async addSupportingRelationshipForGoal(goalGid: string, data: any): Promise<any> {
+    const client = Asana.ApiClient.instance;
+    const body: any = { data: { supporting_resource: data.supporting_resource } };
+    if (data.contribution_weight !== undefined) body.data.contribution_weight = data.contribution_weight;
+    if (data.insert_before) body.data.insert_before = data.insert_before;
+    if (data.insert_after) body.data.insert_after = data.insert_after;
+
+    const response = await client.callApi(
+      '/goals/{goal_gid}/addSupportingRelationship',
+      'POST',
+      { goal_gid: goalGid },
+      {},
+      {},
+      {},
+      body,
+      ['token'],
+      ['application/json'],
+      ['application/json'],
+      'Object'
+    );
     return response.data;
   }
 
